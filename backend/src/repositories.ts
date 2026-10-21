@@ -1,0 +1,193 @@
+import { db } from "./db.ts";
+import { watchedAddresses, blocks, events } from "../db/schema.ts";
+import { pgHttpErrorMap } from "./utils/db-error.ts";
+import { eq, desc, asc, and, ilike, sql, gt } from "drizzle-orm";
+import type { Address } from "viem";
+
+const SORTABLE_COLUMNS = {
+  id: events.id,
+  blockNumber: events.blockNumber,
+  eventName: events.eventName,
+  contract: events.contract,
+  indexedAt: events.indexedAt,
+} as const;
+
+export type EventSortBy = keyof typeof SORTABLE_COLUMNS;
+export type SortOrder = "asc" | "desc";
+
+export const isEventSortBy = (value: unknown): value is EventSortBy =>
+  typeof value === "string" && Object.hasOwn(SORTABLE_COLUMNS, value);
+
+export const watchedAddressList = async (
+  user: Address,
+): Promise<{
+  count: bigint;
+  res: any[];
+}> => {
+  const where = eq(watchedAddresses.watched_by, user);
+  const count = await db.$count(watchedAddresses, where);
+  const res = await db.select().from(watchedAddresses).where(where);
+  return { count: count, res: res };
+};
+
+export const addAddressToWatch = async (
+  row: object,
+): Promise<{ status: boolean; msg: string }> => {
+  try {
+    await db.insert(watchedAddresses).values(row);
+    return { status: 200, msg: "data added to watch list successfully" };
+  } catch (err) {
+    console.log(pgHttpErrorMap.get(err.cause.code));
+    const httpErrCode = pgHttpErrorMap.get(err.cause.code);
+    return {
+      status: Number(httpErrCode),
+      msg: err.cause.detail,
+    };
+  }
+};
+
+export const deleteWatchedAddress = async (id: number, user: Address) => {
+  try {
+    await db
+      .delete(watchedAddresses)
+      .where(
+        and(eq(watchedAddresses.id, id), eq(watchedAddresses.watched_by, user)),
+      );
+    return { status: 200, msg: "data deleted from watch list successfully" };
+  } catch (err) {
+    console.log(err);
+    console.log(pgHttpErrorMap.get(err.cause.code));
+    const httpErrCode = pgHttpErrorMap.get(err.cause.code);
+    return {
+      status: Number(httpErrCode),
+      msg: err.cause.detail,
+    };
+  }
+};
+
+export const addToBlocks = async (rows: object[]) => {
+  try {
+    const added = await db
+      .insert(blocks)
+      .values(rows)
+      .onConflictDoNothing()
+      .returning();
+    return {
+      status: 200,
+      msg: "Block addedd successfully",
+      numOfRows: added.length,
+      addedRows: added,
+    };
+  } catch (err) {
+    return { status: 400, msg: err.cause.detail };
+  }
+};
+
+export const addToEvents = async (rows: object[]) => {
+  try {
+    const added = await db
+      .insert(events)
+      .values(rows)
+      .onConflictDoNothing({ target: [events.txHash, events.logIndex] })
+      .returning();
+    return {
+      status: 200,
+      msg: "Event addedd successfully",
+      numOfRows: added.length,
+      addedRows: added,
+    };
+  } catch (err) {
+    return { status: 400, msg: err };
+  }
+};
+
+export const saveBlocksAndEvents = async (
+  blockRows: object[],
+  eventRows: object[],
+) => {
+  try {
+    const addedEvents = await db.transaction(async (tx) => {
+      await tx.insert(blocks).values(blockRows).onConflictDoNothing();
+      if (eventRows.length === 0) return [];
+      return await tx
+        .insert(events)
+        .values(eventRows)
+        .onConflictDoNothing({ target: [events.txHash, events.logIndex] })
+        .returning();
+    });
+    return {
+      status: 200,
+      msg: "Blocks and events saved successfully",
+      numOfRows: addedEvents.length,
+      addedRows: addedEvents,
+    };
+  } catch (err) {
+    return { status: 400, msg: err };
+  }
+};
+
+export const getLastBlock = async () => {
+  const lastBlock = await db
+    .select()
+    .from(blocks)
+    .orderBy(desc(blocks.number))
+    .limit(1);
+
+  return lastBlock;
+};
+
+export const getRecentBlocks = async (limit: number) => {
+  return await db
+    .select()
+    .from(blocks)
+    .orderBy(desc(blocks.number))
+    .limit(limit);
+};
+
+export const rollbackAbove = async (ancestor: bigint) => {
+  await db.transaction(async (tx) => {
+    await tx.delete(events).where(gt(events.blockNumber, ancestor));
+    await tx.delete(blocks).where(gt(blocks.number, ancestor));
+  });
+};
+
+export const getEvents = async (
+  page: number,
+  limit: number,
+  sortBy: EventSortBy = "id",
+  sortOrder: SortOrder = "desc",
+  filters: object,
+): Promise<{ count: bigint; res: any[] }> => {
+  const offset = (page - 1) * limit;
+  const direction = sortOrder === "asc" ? asc : desc;
+  const sortColumn = SORTABLE_COLUMNS[sortBy];
+  const orderBy =
+    sortBy === "id"
+      ? [direction(events.id)]
+      : [direction(sortColumn), direction(events.id)];
+
+  const res = await db
+    .select()
+    .from(events)
+    .where(
+      and(
+        ilike(events.contract, `%${filters.contract}%`),
+        ilike(events.eventName, `%${filters.eventName}%`),
+        ilike(sql`${events.args}::text`, `%${filters.wallet}%`),
+      ),
+    )
+    .orderBy(...orderBy)
+    .limit(Number(limit))
+    .offset(offset);
+
+  const totalCount = await db.$count(
+    events,
+    and(
+      ilike(events.contract, `%${filters.contract}%`),
+      ilike(events.eventName, `%${filters.eventName}%`),
+      ilike(sql`${events.args}::text`, `%${filters.wallet}%`),
+    ),
+  );
+  const hasMore = offset + res.length < totalCount;
+  return { count: totalCount, res: res, hasMore: hasMore };
+};

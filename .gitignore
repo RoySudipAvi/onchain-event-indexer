@@ -1,0 +1,11 @@
+.env
+castfuzz.conf
+castfuzz.sh
+structure.md
+node_modules/
+backend/node_modules/
+backend/.env
+contracts
+frontend/node_modules/
+frontend/.env
+
