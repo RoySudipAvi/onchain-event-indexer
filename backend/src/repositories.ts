@@ -18,6 +18,18 @@ export type SortOrder = "asc" | "desc";
 export const isEventSortBy = (value: unknown): value is EventSortBy =>
   typeof value === "string" && Object.hasOwn(SORTABLE_COLUMNS, value);
 
+export const watchedAddressListPoller = async () => {
+  const addresses = await db
+    .selectDistinctOn([watchedAddresses.address], {
+      address: watchedAddresses.address,
+    })
+    .from(watchedAddresses)
+    .where(watchedAddresses.active === true)
+    .orderBy(watchedAddresses.address);
+
+  return addresses;
+};
+
 export const watchedAddressList = async (
   user: Address,
 ): Promise<{

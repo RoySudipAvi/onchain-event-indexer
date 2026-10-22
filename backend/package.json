@@ -25,12 +25,14 @@
   "packageManager": "pnpm@12.4.2",
   "type": "module",
   "dependencies": {
+    "connect-redis": "^10.0.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.2",
     "drizzle-orm": "1.0.0-rc.4",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
     "pg": "^8.23.0",
+    "redis": "^6.3.0",
     "viem": "^2.56.8",
     "ws": "^8.22.0"
   },

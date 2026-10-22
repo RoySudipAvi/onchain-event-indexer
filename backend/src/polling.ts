@@ -11,14 +11,14 @@ import { config, eventEmitter } from "./config.ts";
 import { ABI_REGISTRY } from "./utils/helpers.ts";
 import {
   getLastBlock,
-  watchedAddressList,
+  watchedAddressListPoller,
   saveBlocksAndEvents,
   getRecentBlocks,
   rollbackAbove,
 } from "./repositories.ts";
 
 const MAX_REORG_DEPTH = 64;
-const CHUNK_SIZE = 5n;
+const CHUNK_SIZE = config.chunkSize;
 ////////////////////  BLOCKS ///////////////////////////////
 const getLastIndexedBlock = async (): Promise<bigint> => {
   const lastBlockStored = await getLastBlock();
@@ -302,10 +302,11 @@ export const poller = async () => {
     console.log("last indexed block: ", last_indexed_block);
     console.log("current block: ", currentBLockNum);
     if (last_indexed_block < currentBLockNum) {
-      const watchedAddressObjects = await watchedAddressList();
-      const watchedAddresses = watchedAddressObjects.res
-        .filter((obj) => obj.active !== false)
-        .map((obj) => obj.address);
+      const watchedAddresses = (await watchedAddressListPoller()).map(
+        (obj) => obj.address,
+      );
+      console.log("watched addresses: ", watchedAddresses);
+
       if (watchedAddresses.length === 0) {
         console.log("No wallet to check");
         return false;

@@ -2,6 +2,8 @@ import "dotenv/config";
 import { Router } from "express";
 import type { Request, Response } from "express";
 import session from "express-session";
+import { createClient } from "redis";
+import { RedisStore } from "connect-redis";
 import {
   watchedAddressList,
   addAddressToWatch,
@@ -26,8 +28,12 @@ declare module "express-session" {
 }
 
 const DOMAIN = process.env.CLIENT_DOMAIN;
+const redisClient = createClient({ url: process.env.REDIS_URL });
+await redisClient.connect().catch(console.error);
+const store = new RedisStore({ client: redisClient, prefix: "sess:" });
 const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET,
+  store: store,
   resave: false,
   saveUninitialized: false,
   cookie: { httpOnly: true, sameSite: "lax", secure: false },
