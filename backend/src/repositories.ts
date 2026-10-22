@@ -24,7 +24,9 @@ export const watchedAddressListPoller = async () => {
       address: watchedAddresses.address,
     })
     .from(watchedAddresses)
-    .where(watchedAddresses.active === true)
+    .where(
+      or(eq(watchedAddresses.active, true), isNull(watchedAddresses.active)),
+    )
     .orderBy(watchedAddresses.address);
 
   return addresses;

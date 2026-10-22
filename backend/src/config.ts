@@ -1,16 +1,34 @@
 import "dotenv/config";
 import { createPublicClient, http, type PublicClient } from "viem";
-import { sepolia } from "viem/chains";
+import { anvil, sepolia } from "viem/chains";
 import EventEmitter from "node:events";
 
 export const eventEmitter = new EventEmitter();
-const rpc_url = process.env.RPC_URL;
-const chain = process.env.CHAIN;
-const startBlock = BigInt(process.env.START_BLOCK);
-const chunkSize = BigInt(process.env.CHUNK_SIZE);
+const CHAINS = { anvil, sepolia } as const;
 
+const chainName = process.env.CHAIN ?? "";
+if (!Object.hasOwn(CHAINS, chainName)) {
+  throw new Error(
+    `Unknown CHAIN "${chainName}". Use one of: ${Object.keys(CHAINS).join(", ")}`,
+  );
+}
+const chain = CHAINS[chainName as keyof typeof CHAINS];
+
+const rpc_url = process.env.RPC_URL;
 if (!rpc_url) throw new Error("RPC_URL is not set");
-if (!startBlock || !chunkSize) throw new Error("Poller configuration missing");
+
+const positiveInt = (name: string): number => {
+  const raw = process.env[name];
+  const n = Number(raw);
+  if (!raw || !Number.isInteger(n) || n <= 0) {
+    throw new Error(`${name} must be a positive integer, got "${raw}"`);
+  }
+  return n;
+};
+
+const startBlock = BigInt(positiveInt("START_BLOCK"));
+const chunkSize = BigInt(positiveInt("CHUNK_SIZE"));
+const pollIntervalMs = positiveInt("POLL_INTERVAL_MS");
 
 const publicClient: PublicClient = createPublicClient({
   chain: chain,
@@ -20,7 +38,7 @@ const publicClient: PublicClient = createPublicClient({
 export const config = {
   chain: chain,
   rpc_url: rpc_url,
-  poll_interval_ms: process.env.POLL_INTERVAL_MS,
+  poll_interval_ms: pollIntervalMs,
   fresh_state: startBlock,
   publicClient: publicClient,
   chunkSize: chunkSize,
