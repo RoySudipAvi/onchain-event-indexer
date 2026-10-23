@@ -29,6 +29,7 @@ declare module "express-session" {
 
 const DOMAIN = process.env.CLIENT_DOMAIN;
 const redisClient = createClient({ url: process.env.REDIS_URL });
+redisClient.on("error", (err) => console.error("redis error:", err));
 await redisClient.connect().catch(console.error);
 const store = new RedisStore({ client: redisClient, prefix: "sess:" });
 export const sessionMiddleware = session({
