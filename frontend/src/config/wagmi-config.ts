@@ -6,11 +6,11 @@ declare module "wagmi" {
     config: typeof config;
   }
 }
-
+const chain = import.meta.env.VITE_CHAIN;
+const chain_id = chain.id;
 export const config = createConfig({
-  chains: [anvil, baseSepolia],
+  chains: [chain],
   transports: {
-    [anvil]: http(import.meta.env.VITE_ANVIL_URL),
-    [baseSepolia]: http(import.meta.env.VITE_BASE_SEPOLIA_URL),
+    [chain_id]: http(import.meta.env.VITE_RPC_URL),
   },
 });

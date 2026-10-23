@@ -3,7 +3,7 @@ import { useWatchedAddresses } from "../hooks/useWatchedAddresses";
 import { useAddAddressToWatch } from "../hooks/useAddAddressToWatch";
 import { useDeleteWatchedAddress } from "../hooks/useDeleteWatchedAddress";
 import type { Address } from "viem";
-import { isAddress } from "viem";
+import { isAddress, getAddress } from "viem";
 
 const WatchedAddresses = () => {
   const [newAddress, setNewAddress] = useState<Address | null>(null);
@@ -42,7 +42,8 @@ const WatchedAddresses = () => {
       return false;
     }
     setInvaliAddress(null);
-    const payload = { label: label, address: address };
+    const checkSummedAddress = getAddress(address);
+    const payload = { label: label, address: checkSummedAddress };
     mutate(payload, {
       onSuccess: () => {
         setNewLabel(null);

@@ -52,7 +52,10 @@ export const getEvents = async (
   eventsFilter: string,
 ) => {
   const res = await fetch(
-    `${API_BASE_URL}/feed?page=${page}&limit=${limit}&sortBy=${sortBy}&sortOrder=${sortOrder}&filters=${eventsFilter}`,
+    `${API_BASE_URL}/feed?page=${page}&limit=${limit}&sortBy=${sortBy}&sortOrder=${sortOrder}&filters=${encodeURIComponent(eventsFilter)}`,
+    {
+      credentials: "include",
+    },
   );
   if (!res.ok) {
     throw new Error("Failed to fetch events");
