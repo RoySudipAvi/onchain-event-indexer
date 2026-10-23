@@ -31,12 +31,16 @@ const DOMAIN = process.env.CLIENT_DOMAIN;
 const redisClient = createClient({ url: process.env.REDIS_URL });
 await redisClient.connect().catch(console.error);
 const store = new RedisStore({ client: redisClient, prefix: "sess:" });
-const sessionMiddleware = session({
+export const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET,
   store: store,
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: "lax", secure: false },
+  cookie: {
+    httpOnly: true,
+    sameSite: config.cookieSameSite,
+    secure: config.cookieSecure,
+  },
 });
 export const router = Router({ caseSensitive: true, strict: true });
 router.use(sessionMiddleware);
@@ -73,7 +77,7 @@ router.delete(
   },
 );
 
-router.get("/feed", async (req: Request, res: Response) => {
+router.get("/feed", requireAuth, async (req: Request, res: Response) => {
   console.log(typeof req.query.filters);
   let filters = { contract: "", eventName: "", wallet: "" };
   if (req.query.filters) {
@@ -88,7 +92,14 @@ router.get("/feed", async (req: Request, res: Response) => {
   const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
   const sortBy = isEventSortBy(req.query.sortBy) ? req.query.sortBy : "id";
   const sortOrder = req.query.sortOrder === "asc" ? "asc" : "desc";
-  const events = await getEvents(page, limit, sortBy, sortOrder, filters);
+  const events = await getEvents(
+    req.userAddress,
+    page,
+    limit,
+    sortBy,
+    sortOrder,
+    filters,
+  );
   const eventData = events.res.map((event) => ({
     blockNumber: event.blockNumber.toString(),
     txHash: event.txHash,

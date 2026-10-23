@@ -145,7 +145,11 @@ const indexRange = async (
     parsedEvents = prepareEvents(parsedLogs);
   }
   const allEvents = [...nativeTxs, ...parsedEvents];
-  const responseSave = await saveBlocksAndEvents(blocks, allEvents);
+  const responseSave = await saveBlocksAndEvents(
+    blocks,
+    allEvents,
+    watchedAddresses,
+  );
   if (responseSave.status !== 200) {
     throw new Error("saving chunk failed", { cause: responseSave.msg });
   }
@@ -279,6 +283,7 @@ const serializeBigInts = (value: unknown): unknown =>
 const pushEvents = (events: object[]) => {
   if (events.length === 0) return;
   const eventData = events.map((event) => ({
+    addresses: event.addresses,
     blockNumber: event.blockNumber.toString(),
     txHash: event.txHash,
     contract: event.contract,

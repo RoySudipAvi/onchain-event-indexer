@@ -1,8 +1,25 @@
 import { db } from "./db.ts";
-import { watchedAddresses, blocks, events } from "../db/schema.ts";
+import {
+  watchedAddresses,
+  blocks,
+  events,
+  eventAddresses,
+} from "../db/schema.ts";
 import { pgHttpErrorMap } from "./utils/db-error.ts";
-import { eq, desc, asc, and, ilike, sql, gt } from "drizzle-orm";
+import {
+  eq,
+  desc,
+  asc,
+  and,
+  ilike,
+  sql,
+  gt,
+  or,
+  isNull,
+  inArray,
+} from "drizzle-orm";
 import type { Address } from "viem";
+import { involvedAddresses } from "./utils/helpers.ts";
 
 const SORTABLE_COLUMNS = {
   id: events.id,
@@ -118,16 +135,29 @@ export const addToEvents = async (rows: object[]) => {
 export const saveBlocksAndEvents = async (
   blockRows: object[],
   eventRows: object[],
+  watched: Address[],
 ) => {
   try {
+    const watchedSet = new Set<string>(watched);
     const addedEvents = await db.transaction(async (tx) => {
       await tx.insert(blocks).values(blockRows).onConflictDoNothing();
       if (eventRows.length === 0) return [];
-      return await tx
+      const inserted = await tx
         .insert(events)
         .values(eventRows)
         .onConflictDoNothing({ target: [events.txHash, events.logIndex] })
         .returning();
+      const withAddresses = inserted.map((ev) => ({
+        ...ev,
+        addresses: involvedAddresses(ev.args, watchedSet),
+      }));
+      const links = withAddresses.flatMap((ev) =>
+        ev.addresses.map((address) => ({ eventId: ev.id, address })),
+      );
+      if (links.length > 0) {
+        await tx.insert(eventAddresses).values(links).onConflictDoNothing();
+      }
+      return withAddresses;
     });
     return {
       status: 200,
@@ -166,12 +196,13 @@ export const rollbackAbove = async (ancestor: bigint) => {
 };
 
 export const getEvents = async (
+  user: Address,
   page: number,
   limit: number,
   sortBy: EventSortBy = "id",
   sortOrder: SortOrder = "desc",
   filters: object,
-): Promise<{ count: bigint; res: any[] }> => {
+): Promise<{ count: bigint; res: any[]; hasMore: boolean }> => {
   const offset = (page - 1) * limit;
   const direction = sortOrder === "asc" ? asc : desc;
   const sortColumn = SORTABLE_COLUMNS[sortBy];
@@ -180,28 +211,52 @@ export const getEvents = async (
       ? [direction(events.id)]
       : [direction(sortColumn), direction(events.id)];
 
+  const visibleToUser = inArray(
+    events.id,
+    db
+      .select({ id: eventAddresses.eventId })
+      .from(eventAddresses)
+      .innerJoin(
+        watchedAddresses,
+        eq(watchedAddresses.address, eventAddresses.address),
+      )
+      .where(eq(watchedAddresses.watched_by, user)),
+  );
+
+  const where = and(
+    visibleToUser,
+    ilike(events.contract, `%${filters.contract}%`),
+    ilike(events.eventName, `%${filters.eventName}%`),
+    ilike(sql`${events.args}::text`, `%${filters.wallet}%`),
+  );
+
   const res = await db
     .select()
     .from(events)
-    .where(
-      and(
-        ilike(events.contract, `%${filters.contract}%`),
-        ilike(events.eventName, `%${filters.eventName}%`),
-        ilike(sql`${events.args}::text`, `%${filters.wallet}%`),
-      ),
-    )
+    .where(where)
     .orderBy(...orderBy)
     .limit(Number(limit))
     .offset(offset);
 
-  const totalCount = await db.$count(
-    events,
-    and(
-      ilike(events.contract, `%${filters.contract}%`),
-      ilike(events.eventName, `%${filters.eventName}%`),
-      ilike(sql`${events.args}::text`, `%${filters.wallet}%`),
-    ),
-  );
+  const totalCount = await db.$count(events, where);
   const hasMore = offset + res.length < totalCount;
   return { count: totalCount, res: res, hasMore: hasMore };
+};
+
+export const watchersByAddress = async (
+  addresses: string[],
+): Promise<Map<string, string[]>> => {
+  const map = new Map<string, string[]>();
+  if (addresses.length === 0) return map;
+  const rows = await db
+    .select({
+      address: watchedAddresses.address,
+      user: watchedAddresses.watched_by,
+    })
+    .from(watchedAddresses)
+    .where(inArray(watchedAddresses.address, addresses));
+  for (const r of rows) {
+    map.set(r.address, [...(map.get(r.address) ?? []), r.user]);
+  }
+  return map;
 };

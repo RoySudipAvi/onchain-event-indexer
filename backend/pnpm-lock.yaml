@@ -190,6 +190,9 @@ importers:
       redis:
         specifier: ^6.3.0
         version: 6.3.0
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
       viem:
         specifier: ^2.56.8
         version: 2.56.8(typescript@7.0.2)
@@ -218,9 +221,6 @@ importers:
       drizzle-kit:
         specifier: 1.0.0-rc.4
         version: 1.0.0-rc.4
-      tsx:
-        specifier: ^4.23.15
-        version: 4.23.15
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

@@ -7,6 +7,8 @@ import {
   timestamp,
   unique,
   jsonb,
+  primaryKey,
+  index,
 } from "drizzle-orm/pg-core";
 
 export const watchedAddresses = snakeCase.table(
@@ -43,4 +45,18 @@ export const events = snakeCase.table(
     indexedAt: timestamp({ withTimezone: true }).defaultNow(),
   },
   (t) => [unique("tx_log").on(t.txHash, t.logIndex)],
+);
+
+export const eventAddresses = snakeCase.table(
+  "event_addresses",
+  {
+    eventId: bigint({ mode: "bigint" })
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    address: text().notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.eventId, t.address] }),
+    index("event_addresses_address_idx").on(t.address),
+  ],
 );
