@@ -1,7 +1,6 @@
 import { useAuth } from "./Auth";
 const SIWE = () => {
-  const { isAuthenticated, signIn, signOut, isSigningIn, signInError } =
-    useAuth();
+  const { signIn, isSigningIn, signInError } = useAuth();
   return (
     <div className="w-full max-w-sm rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-lg">
       <h3 className="text-lg font-semibold tracking-tight">

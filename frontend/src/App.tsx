@@ -8,8 +8,8 @@ import { useConnection } from "wagmi";
 import { useAuth } from "./auth/components/Auth";
 import SIWE from "./auth/components/SIWE";
 
-const primaryBtn =
-  "inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-indigo-500 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50";
+// const primaryBtn =
+//   "inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-indigo-500 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50";
 const secondaryBtn =
   "inline-flex items-center gap-2 whitespace-nowrap rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-1.5 text-sm font-medium text-zinc-200 transition hover:bg-zinc-700 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50";
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -19,7 +19,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 function App() {
   const connection = useConnection();
-  const { isAuthenticated, signIn, isLoading, signOut } = useAuth();
+  const { isAuthenticated, isLoading, signOut } = useAuth();
 
   if (!connection.address) {
     return (

@@ -1,6 +1,7 @@
 import type { Address, Hex } from "viem";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+if (!API_BASE_URL) throw new Error("VITE_API_BASE_URL is not set");
 export type SiweSession = { address: Address; chainId: number };
 
 export const getWatchedAddress = async () => {
@@ -14,7 +15,10 @@ export const getWatchedAddress = async () => {
   return data;
 };
 
-export const watchAddress = async (payload) => {
+export const watchAddress = async (payload: {
+  label: string;
+  address: Address;
+}) => {
   const res = await fetch(`${API_BASE_URL}/watch-address`, {
     method: "POST",
     credentials: "include",
@@ -27,7 +31,7 @@ export const watchAddress = async (payload) => {
   return response;
 };
 
-export const deleteWatchedAddress = async (payload) => {
+export const deleteWatchedAddress = async (payload: { id: number }) => {
   const res = await fetch(
     `${API_BASE_URL}/delete-watched-address/${payload.id}`,
     {

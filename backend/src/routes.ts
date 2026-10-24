@@ -26,14 +26,21 @@ declare module "express-session" {
     siwe?: { address: Address; chainId: number };
   }
 }
+const requireEnv = (name: string): string => {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is not set`);
+  return value;
+};
 
-const DOMAIN = process.env.CLIENT_DOMAIN;
-const redisClient = createClient({ url: process.env.REDIS_URL });
+const DOMAIN = requireEnv("CLIENT_DOMAIN");
+const REDIS_URL = requireEnv("REDIS_URL");
+const SESSION_SECRET = requireEnv("SESSION_SECRET");
+const redisClient = createClient({ url: REDIS_URL });
 redisClient.on("error", (err) => console.error("redis error:", err));
-await redisClient.connect().catch(console.error);
+await redisClient.connect();
 const store = new RedisStore({ client: redisClient, prefix: "sess:" });
 export const sessionMiddleware = session({
-  secret: process.env.SESSION_SECRET,
+  secret: SESSION_SECRET,
   store: store,
   resave: false,
   saveUninitialized: false,
@@ -104,6 +111,7 @@ router.get("/feed", requireAuth, async (req: Request, res: Response) => {
   const eventData = events.res.map((event) => ({
     blockNumber: event.blockNumber.toString(),
     txHash: event.txHash,
+    logIndex: event.logIndex,
     contract: event.contract,
     eventName: event.eventName,
     args: JSON.stringify(event.args),

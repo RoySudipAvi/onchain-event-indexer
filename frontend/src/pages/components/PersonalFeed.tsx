@@ -3,6 +3,15 @@ import { useEventLists } from "../hooks/useEventLists";
 import { useWebSocket } from "../hooks/useWebSocket";
 import type { EventSortBy, SortOrder } from "../../apis/api";
 
+type FeedEvent = {
+  blockNumber: string;
+  txHash: string;
+  logIndex: number;
+  contract: string;
+  eventName: string;
+  args: string;
+  indexedAt: string;
+};
 const COLUMNS: { label: string; sortKey?: EventSortBy }[] = [
   { label: "Block", sortKey: "blockNumber" },
   { label: "Event", sortKey: "eventName" },
@@ -230,7 +239,7 @@ const PersonalFeed = () => {
 
             {data.count > 0 ? (
               <tbody className="divide-y divide-zinc-800">
-                {data.res.map((log) => {
+                {data.res.map((log: FeedEvent) => {
                   const rowId = `${log.txHash}:${log.logIndex}`;
                   const isExpanded = expandedIds.has(rowId);
                   const parsedArgs = JSON.parse(log.args);

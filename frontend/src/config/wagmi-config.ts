@@ -1,4 +1,4 @@
-import { anvil, baseSepolia } from "viem/chains";
+import { anvil, sepolia } from "viem/chains";
 import { createConfig, http } from "wagmi";
 
 declare module "wagmi" {
@@ -6,11 +6,21 @@ declare module "wagmi" {
     config: typeof config;
   }
 }
-const chain = import.meta.env.VITE_CHAIN;
-const chain_id = chain.id;
+
+const CHAINS = { anvil, sepolia } as const;
+
+const chainName = import.meta.env.VITE_CHAIN ?? "";
+if (!Object.hasOwn(CHAINS, chainName)) {
+  throw new Error(
+    `Unknown VITE_CHAIN "${chainName}". Use one of: ${Object.keys(CHAINS).join(", ")}`,
+  );
+}
+const chain = CHAINS[chainName as keyof typeof CHAINS];
+
 export const config = createConfig({
   chains: [chain],
   transports: {
-    [chain_id]: http(import.meta.env.VITE_RPC_URL),
+    [anvil.id]: http(import.meta.env.VITE_RPC_URL),
+    [sepolia.id]: http(import.meta.env.VITE_RPC_URL),
   },
 });

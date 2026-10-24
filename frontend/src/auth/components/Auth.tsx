@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import type { Address } from "viem";
 import { useConnection, useConfig, useDisconnect } from "wagmi";
 import { useSIWE } from "../hooks/useSIWE";
@@ -13,12 +14,12 @@ type AuthCtx = {
   isSigningIn: boolean;
   signInError: string | null;
   signIn: () => Promise<void>;
-  signOut: () => Promise<void>;
+  signOut: () => void;
 };
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
-export const AuthProvider = ({ children }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { getNonce, verify, session, logOut } = useSIWE();
   const { address, chainId, status, isConnected } = useConnection();
   const config = useConfig();

@@ -1,38 +1,56 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 const WS_URL = import.meta.env.VITE_WS_URL;
 if (!WS_URL) throw new Error("VITE_WS_URL is not set");
+if (window.location.protocol === "https:" && !WS_URL.startsWith("wss://")) {
+  throw new Error(
+    "VITE_WS_URL must start with wss:// when the site is served over https",
+  );
+}
+
+const MAX_DELAY_MS = 30000;
+
 export const useWebSocket = () => {
-  const [wsData, setWsData] = useState(null);
-  const socketRef = useRef(null);
   const queryClient = useQueryClient();
   useEffect(() => {
-    const clientId = crypto.randomUUID();
-    const socket = new WebSocket(WS_URL);
-    socketRef.current = socket;
-    const handleOpen = () => {
-      console.log("server connected");
-      socket.send(`From Client : ${clientId}`);
+    let socket: WebSocket | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+    let stopped = false;
+
+    const connect = () => {
+      socket = new WebSocket(WS_URL);
+
+      socket.addEventListener("open", () => {
+        console.log("server connected");
+        // events may have arrived while we were disconnected
+        if (attempts > 0) {
+          queryClient.invalidateQueries({ queryKey: ["event-list"] });
+        }
+        attempts = 0;
+      });
+      socket.addEventListener("message", (msg: MessageEvent) => {
+        console.log(JSON.parse(msg.data));
+        queryClient.invalidateQueries({ queryKey: ["event-list"] });
+      });
+      socket.addEventListener("error", (err: Event) => {
+        console.error(err);
+      });
+      socket.addEventListener("close", () => {
+        if (stopped) return;
+        const delay = Math.min(1000 * 2 ** attempts, MAX_DELAY_MS);
+        attempts += 1;
+        timer = setTimeout(connect, delay);
+      });
     };
-    const handleMessage = (msg) => {
-      console.log(JSON.parse(msg.data));
-      queryClient.setQueryData(["event-list"], (old) => {});
-    };
-    const handleError = (err) => {
-      console.error(err);
-    };
-    socket.addEventListener("open", handleOpen);
-    socket.addEventListener("message", handleMessage);
-    socket.addEventListener("error", handleError);
+
+    connect();
 
     return () => {
-      socket.removeEventListener("open", handleOpen);
-      socket.removeEventListener("message", handleMessage);
-      socket.removeEventListener("error", handleError);
-      socket.close();
+      stopped = true;
+      clearTimeout(timer);
+      socket?.close();
     };
-  }, []);
-
-  return { wsData };
+  }, [queryClient]);
 };

@@ -7,7 +7,9 @@ import { config } from "./config.ts";
 
 const app: Express = express();
 if (config.trustProxy) app.set("trust proxy", 1);
-
+app.get("/health", (_req, res) => {
+  res.json({ ok: true });
+});
 app.use(
   cors({
     origin: config.corsOrigins,

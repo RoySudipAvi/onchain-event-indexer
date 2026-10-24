@@ -8,6 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 export const DB_URL = process.env.DB_URL;
+if (!DB_URL) throw new Error("DB_URL is not set");
 
 export const pool = new Pool({
   connectionString: DB_URL,

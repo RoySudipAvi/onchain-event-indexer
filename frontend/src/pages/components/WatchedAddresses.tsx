@@ -5,37 +5,32 @@ import { useDeleteWatchedAddress } from "../hooks/useDeleteWatchedAddress";
 import type { Address } from "viem";
 import { isAddress, getAddress } from "viem";
 
+type WatchedAddress = {
+  id: number;
+  address: string;
+  label: string | null;
+};
 const WatchedAddresses = () => {
   const [newAddress, setNewAddress] = useState<Address | null>(null);
   const [newLabel, setNewLabel] = useState<string | null>(null);
   const [invalidAddress, setInvaliAddress] = useState<string | null>(null);
-  const { data, error, isPending, isError, isSuccess } = useWatchedAddresses();
+  const { data, error, isPending, isError } = useWatchedAddresses();
   const {
     mutate,
-    mutateAsync,
     reset: addReset,
     isPending: isAddPending,
     isError: isAddError,
     isSuccess: isAddSuccess,
     error: addError,
-    data: addData,
   } = useAddAddressToWatch();
 
-  const {
-    mutate: mutataDelete,
-    mutateAsync: mutateDeleteAsync,
-    isPending: isDeletePending,
-    isError: isDeleteError,
-    isSuccess: isDeleteSuccess,
-    error: deleteError,
-    data: deleteData,
-  } = useDeleteWatchedAddress();
+  const { mutate: mutataDelete } = useDeleteWatchedAddress();
 
   if (isPending) return <p>Loading...</p>;
   if (isError) return <p>Error: {error.message}</p>;
 
-  const handleSubmit = (address: Address, label: string) => {
-    if (!isAddress(address)) {
+  const handleSubmit = (address: Address | null, label: string | null) => {
+    if (!address || !isAddress(address)) {
       setInvaliAddress(
         "Invalid Ethereum address provided, check the length or format",
       );
@@ -43,7 +38,7 @@ const WatchedAddresses = () => {
     }
     setInvaliAddress(null);
     const checkSummedAddress = getAddress(address);
-    const payload = { label: label, address: checkSummedAddress };
+    const payload = { label: label ?? "", address: checkSummedAddress };
     mutate(payload, {
       onSuccess: () => {
         setNewLabel(null);
@@ -63,7 +58,7 @@ const WatchedAddresses = () => {
         <div className="mb-6">
           {data.count > 0 ? (
             <ul className="space-y-2">
-              {data.res.map((item) => (
+              {data.res.map((item: WatchedAddress) => (
                 <li
                   className="flex items-start justify-between gap-3 rounded-md border border-zinc-800 bg-zinc-950 p-3"
                   key={item.address}
@@ -97,6 +92,7 @@ const WatchedAddresses = () => {
               setNewLabel(e.target.value);
               addReset();
             }}
+            value={newLabel ?? ""}
             placeholder="Label"
             className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none transition focus:border-zinc-500"
           />
@@ -107,6 +103,7 @@ const WatchedAddresses = () => {
               setNewAddress(e.target.value as Address);
               addReset();
             }}
+            value={newAddress ?? ""}
             placeholder="0x..."
             className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none transition focus:border-zinc-500"
           />
