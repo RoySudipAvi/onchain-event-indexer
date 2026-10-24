@@ -5,7 +5,7 @@ import {
   events,
   eventAddresses,
 } from "../db/schema.ts";
-import { pgHttpErrorMap } from "./utils/db-error.ts";
+import { toHttpError } from "./utils/db-error.ts";
 import {
   eq,
   desc,
@@ -61,38 +61,33 @@ export const watchedAddressList = async (
   return { count: count, res: res };
 };
 
-export const addAddressToWatch = async (
-  row: object,
-): Promise<{ status: boolean; msg: string }> => {
+export const addAddressToWatch = async (row: {
+  address: Address;
+  label?: string;
+  watched_by: Address;
+}) => {
   try {
     await db.insert(watchedAddresses).values(row);
     return { status: 200, msg: "data added to watch list successfully" };
   } catch (err) {
-    console.log(pgHttpErrorMap.get(err.cause.code));
-    const httpErrCode = pgHttpErrorMap.get(err.cause.code);
-    return {
-      status: Number(httpErrCode),
-      msg: err.cause.detail,
-    };
+    return toHttpError(err);
   }
 };
 
 export const deleteWatchedAddress = async (id: number, user: Address) => {
   try {
-    await db
+    const deleted = await db
       .delete(watchedAddresses)
       .where(
         and(eq(watchedAddresses.id, id), eq(watchedAddresses.watched_by, user)),
-      );
+      )
+      .returning({ id: watchedAddresses.id });
+    if (deleted.length === 0) {
+      return { status: 404, msg: "Watched address not found" };
+    }
     return { status: 200, msg: "data deleted from watch list successfully" };
   } catch (err) {
-    console.log(err);
-    console.log(pgHttpErrorMap.get(err.cause.code));
-    const httpErrCode = pgHttpErrorMap.get(err.cause.code);
-    return {
-      status: Number(httpErrCode),
-      msg: err.cause.detail,
-    };
+    return toHttpError(err);
   }
 };
 

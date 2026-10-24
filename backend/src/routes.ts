@@ -65,7 +65,6 @@ router.post(
   "/watch-address",
   requireAuth,
   async (req: Request, res: Response) => {
-    if (!req.session.siwe) return res.status(401).end();
     if (!isAddress(req.body.address)) {
       return res.status(400).json({
         msg: "Invalid Ethereum address provided, check the length or format",
@@ -85,7 +84,11 @@ router.delete(
   "/delete-watched-address/:id",
   requireAuth,
   async (req: Request, res: Response) => {
-    const returned = await deleteWatchedAddress(req.params.id, req.userAddress);
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ msg: "Invalid id" });
+    }
+    const returned = await deleteWatchedAddress(id, req.userAddress);
     return res.status(returned.status).json({ msg: returned.msg });
   },
 );

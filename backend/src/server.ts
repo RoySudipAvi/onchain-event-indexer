@@ -1,5 +1,5 @@
 import express from "express";
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { router } from "./routes.ts";
 import cors from "cors";
 import { poller } from "./polling.ts";
@@ -18,6 +18,11 @@ app.use(
 );
 app.use(express.json());
 app.use("/api", router);
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error("unhandled error:", err);
+  if (res.headersSent) return;
+  res.status(500).json({ msg: "Internal server error" });
+});
 
 poller();
 
