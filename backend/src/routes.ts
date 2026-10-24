@@ -11,7 +11,7 @@ import {
   getEvents,
   isEventSortBy,
 } from "./repositories.ts";
-import { isAddress } from "viem";
+import { isAddress, getAddress } from "viem";
 import {
   generateSiweNonce,
   parseSiweMessage,
@@ -71,7 +71,12 @@ router.post(
         msg: "Invalid Ethereum address provided, check the length or format",
       });
     }
-    const row = { ...req.body, watched_by: req.userAddress };
+    const watchedAddress = getAddress(req.body.address);
+    const row = {
+      address: watchedAddress,
+      label: req.body.label,
+      watched_by: req.userAddress,
+    };
     const returned = await addAddressToWatch(row);
     return res.status(returned.status).json({ msg: returned.msg });
   },
