@@ -35,7 +35,7 @@ export const useWebSocket = () => {
         try {
           const data = JSON.parse(msg.data);
           if (data.type === "new-events" && typeof data.count === "number") {
-            setNewEventsCount(data.count);
+            setNewEventsCount((old) => old + data.count);
           }
         } catch {
           // ignore malformed messages
