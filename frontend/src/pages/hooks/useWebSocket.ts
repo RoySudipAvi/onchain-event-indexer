@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 const WS_URL = import.meta.env.VITE_WS_URL;
@@ -12,6 +12,7 @@ if (window.location.protocol === "https:" && !WS_URL.startsWith("wss://")) {
 const MAX_DELAY_MS = 30000;
 
 export const useWebSocket = () => {
+  const [newEventsCount, setNewEventsCount] = useState<number>(0);
   const queryClient = useQueryClient();
   useEffect(() => {
     let socket: WebSocket | null = null;
@@ -31,7 +32,14 @@ export const useWebSocket = () => {
         attempts = 0;
       });
       socket.addEventListener("message", (msg: MessageEvent) => {
-        console.log(JSON.parse(msg.data));
+        try {
+          const data = JSON.parse(msg.data);
+          if (data.type === "new-events" && typeof data.count === "number") {
+            setNewEventsCount(data.count);
+          }
+        } catch {
+          // ignore malformed messages
+        }
         queryClient.invalidateQueries({ queryKey: ["event-list"] });
       });
       socket.addEventListener("error", (err: Event) => {
@@ -53,4 +61,5 @@ export const useWebSocket = () => {
       socket?.close();
     };
   }, [queryClient]);
+  return { newEventsCount, setNewEventsCount };
 };

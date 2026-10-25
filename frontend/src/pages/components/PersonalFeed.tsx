@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import { useState, Fragment, useEffect } from "react";
 import { useEventLists } from "../hooks/useEventLists";
 import { useWebSocket } from "../hooks/useWebSocket";
 import type { EventSortBy, SortOrder } from "../../apis/api";
@@ -59,8 +59,19 @@ const PersonalFeed = () => {
 
   const { data, error, isPending, isError, isPlaceholderData, isFetching } =
     useEventLists(page, 10, sortBy, sortOrder, eventsFilter);
-  useWebSocket();
-
+  const { newEventsCount, setNewEventsCount } = useWebSocket();
+  useEffect(() => {
+    console.log("new events: ", newEventsCount);
+    if (newEventsCount === 0) return;
+    const t = setTimeout(() => setNewEventsCount(0), 8000);
+    return () => clearTimeout(t);
+  }, [newEventsCount]);
+  const showLatest = () => {
+    setSortBy("id");
+    setSortOrder("desc");
+    setPage(1);
+    setNewEventsCount(0);
+  };
   const handleSort = (key: EventSortBy) => {
     if (key === sortBy) {
       setSortOrder((old) => (old === "asc" ? "desc" : "asc"));
@@ -115,7 +126,35 @@ const PersonalFeed = () => {
           Updating…
         </span>
       </div>
-
+      {newEventsCount > 0 && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-4 flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-300"
+        >
+          <span>
+            {newEventsCount} new {newEventsCount === 1 ? "event" : "events"}
+            arrived
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={showLatest}
+              className="font-medium hover:underline"
+            >
+              Show latest
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewEventsCount(0)}
+              aria-label="Dismiss"
+              className="text-emerald-400/70 hover:text-emerald-300"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-lg">
         {/* Filters */}
         <div className="border-b border-zinc-800 p-4">

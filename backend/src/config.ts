@@ -55,7 +55,7 @@ const publicClient: PublicClient = createPublicClient({
   transport: http(rpc_url),
 });
 
-export const config = {
+export const config: any = {
   chain: chain,
   rpc_url: rpc_url,
   poll_interval_ms: pollIntervalMs,
