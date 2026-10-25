@@ -265,7 +265,7 @@ const prepareTransaction = (tx: Transaction) => {
   const row = {
     blockNumber: tx.blockNumber,
     txHash: tx.hash,
-    logIndex: 0,
+    logIndex: -1,
     contract: "0x0",
     eventName: "Eth transfer",
     args: serializeBigInts(args),

@@ -19,6 +19,7 @@ import {
 } from "viem/siwe";
 import { config } from "./config.ts";
 import { requireAuth } from "./auth.ts";
+import { rateLimit } from "express-rate-limit";
 
 declare module "express-session" {
   interface SessionData {
@@ -51,6 +52,24 @@ export const sessionMiddleware = session({
   },
 });
 export const router = Router({ caseSensitive: true, strict: true });
+const WINDOW_MS = 15 * 60 * 1000;
+const apiLimiter = rateLimit({
+  windowMs: WINDOW_MS,
+  limit: 200,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { msg: "Too many requests, try again later" },
+});
+const authLimiter = rateLimit({
+  windowMs: WINDOW_MS,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { msg: "Too many login attempts, try again later" },
+});
+router.use(apiLimiter);
+router.use("/siwe/getNonce", authLimiter);
+router.use("/siwe/verify", authLimiter);
 router.use(sessionMiddleware);
 
 router.get(
